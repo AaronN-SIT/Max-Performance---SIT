@@ -1,3 +1,0 @@
-'''
-Calculations (fatigue, recovery, trends)
-'''
