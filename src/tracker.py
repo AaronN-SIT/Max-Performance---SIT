@@ -1,3 +1,0 @@
-'''
-Performance tracker class
-'''
