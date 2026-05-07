@@ -104,6 +104,7 @@ class GymMember:
         if not (0.0 < intensity_pct <= 1.0):
             raise ValueError("Intensity has to be between 0.0 and 1.0, got: " + str(intensity_pct))
 
+        # Karvonen formula with a +/- 5% window around the target intensity
         lower = int(self.resting_bpm + (self.heart_rate_reserve * (intensity_pct - 0.05)))
         upper = int(self.resting_bpm + (self.heart_rate_reserve * (intensity_pct + 0.05)))
         return (lower, upper)
@@ -115,8 +116,10 @@ class GymMember:
         Beginners average ~45 min/session, intermediate ~60, expert ~75.
         Returns estimated total active minutes per week.
         """
+        # rough per-session minutes by experience tier
         base_minutes = {1: 45.0, 2: 60.0, 3: 75.0}
         mins_per_session = base_minutes.get(self.experience_level, 60.0)
+        # weekly volume = sessions per week * minutes per session
         return round(self.workout_frequency * mins_per_session, 1)
 
     def __str__(self):
