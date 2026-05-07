@@ -30,15 +30,26 @@ class PerformanceTracker:
     INTENSITY_MAP = {1: "low", 2: "moderate", 3: "high"}
 
     def __init__(self, member):
+        """
+        Build a tracker around one GymMember. Member is required since
+        a lot of the analysis is scoped to that person's experience tier.
+        """
         if not isinstance(member, GymMember):
             raise TypeError("member must be a GymMember instance.")
 
+        # composition: tracker has-a member
         self.member = member
         self.df = None
         self.member_df = None
         self._notes = []
 
     def load_data(self, filepath):
+        """
+        Read the CSV at filepath, validate columns, clean string fields,
+        drop rows missing key columns, and split out a peer subset for
+        the member's experience level. Raises FileNotFoundError if the
+        path is bad or ValueError if the file is unreadable / missing cols.
+        """
         try:
             df = pd.read_csv(filepath)
         except FileNotFoundError:
@@ -46,6 +57,7 @@ class PerformanceTracker:
         except Exception as e:
             raise ValueError("Couldn't read the CSV: " + str(e))
 
+        # set difference: which required columns are missing from the file
         missing = self.REQUIRED_COLS - set(df.columns)
         if missing:
             raise ValueError("Missing columns in dataset: " + str(missing))
@@ -54,11 +66,13 @@ class PerformanceTracker:
         for col in ["Workout_Type", "Gender"]:
             df[col] = df[col].astype(str).str.replace(r"[\n\t\r]", "", regex=True).str.strip()
 
+        # only keep rows that have all the columns analysis depends on
         needed = ["Avg_BPM", "Calories_Burned", "Session_Duration (hours)",
                     "Workout_Type", "Experience_Level", "Age", "BMI"]
         df = df.dropna(subset=needed)
         df = df.reset_index(drop=True)
 
+        # convert hours to minutes and label experience levels with intensity strings
         df["duration_min"] = (df["Session_Duration (hours)"] * 60).round(1)
         df["intensity_level"] = df["Experience_Level"].map(self.INTENSITY_MAP)
 
@@ -139,6 +153,7 @@ class PerformanceTracker:
 
         mhr = self.member.max_heart_rate
 
+        # bucket each session's avg HR into a zone label
         zones = [
             "Zone 1 - Recovery"     if hr < mhr * 0.60 else
             "Zone 2 - Aerobic Base" if hr < mhr * 0.70 else
@@ -148,10 +163,12 @@ class PerformanceTracker:
             for hr in self.df["avg_heart_rate"]
         ]
 
+        # count occurrences of each zone label
         zone_counts = {}
         for z in zones:
             zone_counts[z] = zone_counts.get(z, 0) + 1
 
+        # sort by zone name so output order is stable
         return dict(sorted(zone_counts.items()))
 
     def bmi_by_experience(self):
@@ -185,11 +202,14 @@ class PerformanceTracker:
         if self.df is None:
             raise RuntimeError("Load data first.")
 
+        # unique workout types as a set (set operation usage)
         types = set(self.df["exercise_type"].dropna().unique())
+        # dict comprehension: count rows per type
         counts = {
             wt: sum(1 for t in self.df["exercise_type"] if t == wt)
             for wt in types
         }
+        # sort by count descending so the most common type comes first
         return dict(sorted(counts.items(), key=lambda x: x[1], reverse=True))
 
     def peer_comparison(self):
@@ -210,27 +230,36 @@ class PerformanceTracker:
         }
 
     def add_note(self, note):
+        """Append a non-empty trimmed string to the tracker's note log."""
         if isinstance(note, str) and note.strip():
             self._notes.append(note.strip())
 
     def get_notes(self):
+        """Return a copy of the note log so callers can't mutate the internal list."""
         return list(self._notes)
 
     def __len__(self):
+        """Number of records currently loaded (0 if load_data hasn't run yet)."""
         if self.df is None:
             return 0
         return len(self.df)
 
     def __str__(self):
+        """Short status line showing the member id and record count."""
         n = len(self.df) if self.df is not None else 0
         return ("PerformanceTracker for Member #" + str(self.member.member_id) +
                 " | Records loaded: " + str(n))
 
     def __repr__(self):
+        """Developer-friendly repr that includes the wrapped member."""
         return "PerformanceTracker(member=" + repr(self.member) + ")"
 
     def __getattr__(self, name):
-        # lets tracker.bmi work instead of tracker.member.bmi
+        """
+        Forward unknown attribute lookups to the underlying member, so
+        tracker.bmi works as a shortcut for tracker.member.bmi.
+        """
+        # don't recurse on our own private attributes
         if name in ("member", "df", "member_df", "_notes"):
             raise AttributeError(name)
         try:
