@@ -42,6 +42,7 @@ def plot_calories_by_workout_type(df, save_path=None):
     """Bar chart: average calories burned per workout type."""
     _require_nonempty_df(df, ["exercise_type", "cal_burned"])
 
+    # group by workout type, take mean calories, sort biggest-first
     means = df.groupby("exercise_type")["cal_burned"].mean().sort_values(ascending=False)
 
     fig, ax = plt.subplots(figsize=(8, 5))
@@ -52,6 +53,7 @@ def plot_calories_by_workout_type(df, save_path=None):
     ax.grid(axis="y", linestyle="--", alpha=0.4)
     fig.tight_layout()
 
+    # save to outputs/ by default so the notebook can also embed the PNG
     out = _resolve_save_path(save_path, "calories_by_workout_type.png")
     fig.savefig(out, dpi=120)
     return fig
@@ -64,6 +66,7 @@ def plot_hr_zone_distribution(tracker_or_df, save_path=None):
     Accepts either a PerformanceTracker (calls hr_zone_distribution() on it)
     or a {zone_name: count} dict directly.
     """
+    # accept a tracker (use its method) or a precomputed dict
     if hasattr(tracker_or_df, "hr_zone_distribution"):
         zones = tracker_or_df.hr_zone_distribution()
     elif isinstance(tracker_or_df, dict):
@@ -74,6 +77,7 @@ def plot_hr_zone_distribution(tracker_or_df, save_path=None):
     if not zones:
         raise ValueError("No HR zone data to plot.")
 
+    # split the dict into parallel lists for plotting
     labels = list(zones.keys())
     counts = list(zones.values())
 
@@ -95,8 +99,10 @@ def plot_bmi_by_experience(df, save_path=None):
     """Bar chart: average BMI by experience level (Beginner / Intermediate / Expert)."""
     _require_nonempty_df(df, ["exp_level", "BMI"])
 
+    # mean BMI per experience level, sorted by level number
     grp = df.groupby("exp_level")["BMI"].mean().sort_index()
     label_map = {1: "Beginner", 2: "Intermediate", 3: "Expert"}
+    # list comprehension to map numeric levels to readable labels
     labels = [label_map.get(int(k), str(k)) for k in grp.index]
 
     fig, ax = plt.subplots(figsize=(7, 5))
@@ -133,6 +139,7 @@ def plot_workout_type_counts(df, save_path=None):
     """Bar chart: how many sessions of each workout type are in the dataset."""
     _require_nonempty_df(df, ["exercise_type"])
 
+    # value_counts returns workout types ordered by frequency
     counts = df["exercise_type"].value_counts()
 
     fig, ax = plt.subplots(figsize=(8, 5))
