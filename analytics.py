@@ -18,8 +18,10 @@ def calc_acwr(recent, long):
     recent = short-term workload (~7 days), long = long-term (~28 days).
     Returns 0 if the chronic load is zero so we don't divide by zero.
     """
+    # guard against an empty/zero chronic window
     if sum(long) == 0:
         return 0
+    # ratio of acute load over chronic load
     return sum(recent) / sum(long)
 
 
@@ -48,12 +50,14 @@ def exercise_dist(exercises):
     total = len(exercises)
     counts = {}
 
+    # tally how many times each exercise name shows up
     for ex in exercises:
         if ex in counts:
             counts[ex] += 1
         else:
             counts[ex] = 1
 
+    # convert raw counts to proportions of the total
     result = {}
     for ex in counts:
         result[ex] = counts[ex] / total
@@ -70,9 +74,11 @@ def trend_analy(x, y):
     x = np.array(x)
     y = np.array(y)
 
+    # degree-1 polyfit returns coefficients of a straight line
     slope, intercept = np.polyfit(x, y, 1)
     y_pred = slope * x + intercept
 
+    # standard R^2 = 1 - SS_res / SS_tot
     residual_ss = np.sum((y - y_pred) ** 2)
     total_ss = np.sum((y - np.mean(y)) ** 2)
 
